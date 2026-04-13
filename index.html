@@ -1,0 +1,1508 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Corpus Rhythm Detector</title>
+
+<!-- Fonts -->
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet" />
+
+<!-- Chart.js -->
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+<style>
+  /* ─── CSS Variables ─────────────────────────────────────────── */
+  :root {
+    --ink:         #0e0d0b;
+    --parchment:   #f5f0e8;
+    --paper:       #faf8f4;
+    --amber:       #c8842a;
+    --amber-light: #e8a84a;
+    --amber-pale:  #f5dfa8;
+    --rust:        #9c3a1e;
+    --teal:        #1e6b6e;
+    --teal-light:  #2a9196;
+    --slate:       #3a3630;
+    --muted:       #7a7060;
+    --border:      #d8d0c0;
+    --border-soft: #ede8df;
+    --shadow:      rgba(14,13,11,0.12);
+    --shadow-deep: rgba(14,13,11,0.24);
+
+    --chart-colors: #c8842a, #1e6b6e, #9c3a1e, #4a6e3a, #5a3a7e, #2a5e7a, #7a4a2a, #3a6e5a;
+
+    --font-display: 'Playfair Display', Georgia, serif;
+    --font-body:    'Crimson Pro', Georgia, serif;
+    --font-mono:    'DM Mono', 'Courier New', monospace;
+  }
+
+  /* ─── Reset & Base ──────────────────────────────────────────── */
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  html { font-size: 16px; scroll-behavior: smooth; }
+
+  body {
+    background: var(--paper);
+    color: var(--ink);
+    font-family: var(--font-body);
+    font-size: 1.05rem;
+    line-height: 1.65;
+    min-height: 100vh;
+    overflow-x: hidden;
+  }
+
+  /* ─── Texture Overlay ───────────────────────────────────────── */
+  body::before {
+    content: '';
+    position: fixed;
+    inset: 0;
+    background-image:
+      url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='300' height='300'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.65' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='300' height='300' filter='url(%23noise)' opacity='0.03'/%3E%3C/svg%3E");
+    pointer-events: none;
+    z-index: 9999;
+    opacity: 0.4;
+  }
+
+  /* ─── Layout Wrapper ────────────────────────────────────────── */
+  .app-wrapper {
+    display: grid;
+    grid-template-rows: auto 1fr;
+    min-height: 100vh;
+  }
+
+  /* ─── Header ────────────────────────────────────────────────── */
+  .site-header {
+    border-bottom: 1px solid var(--border);
+    background: var(--ink);
+    color: var(--parchment);
+    padding: 0;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .site-header::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background: repeating-linear-gradient(
+      90deg,
+      transparent,
+      transparent 120px,
+      rgba(200,132,42,0.04) 120px,
+      rgba(200,132,42,0.04) 121px
+    );
+    pointer-events: none;
+  }
+
+  .header-inner {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 2.5rem 3rem 2rem;
+    display: grid;
+    grid-template-columns: 1fr auto;
+    align-items: end;
+    gap: 2rem;
+  }
+
+  .header-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    color: var(--amber);
+    margin-bottom: 0.5rem;
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+  }
+
+  .header-eyebrow::before {
+    content: '';
+    display: inline-block;
+    width: 24px;
+    height: 1px;
+    background: var(--amber);
+  }
+
+  .site-title {
+    font-family: var(--font-display);
+    font-size: clamp(2rem, 4vw, 3.25rem);
+    font-weight: 900;
+    line-height: 1.05;
+    letter-spacing: -0.02em;
+    color: var(--parchment);
+  }
+
+  .site-title em {
+    color: var(--amber-light);
+    font-style: italic;
+  }
+
+  .site-subtitle {
+    font-family: var(--font-body);
+    font-size: 1rem;
+    font-style: italic;
+    color: rgba(245,240,232,0.55);
+    margin-top: 0.5rem;
+    font-weight: 300;
+  }
+
+  .header-meta {
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
+    color: rgba(245,240,232,0.35);
+    text-align: right;
+    line-height: 1.8;
+    letter-spacing: 0.03em;
+  }
+
+  /* ─── Novel Selector Tabs ───────────────────────────────────── */
+  .novel-tabs-bar {
+    background: var(--ink);
+    border-bottom: 1px solid rgba(200,132,42,0.2);
+    padding: 0 3rem;
+  }
+
+  .novel-tabs {
+    max-width: 1440px;
+    margin: 0 auto;
+    display: flex;
+    gap: 0;
+  }
+
+  .novel-tab {
+    font-family: var(--font-body);
+    font-size: 0.9rem;
+    font-style: italic;
+    color: rgba(245,240,232,0.4);
+    padding: 0.75rem 1.5rem;
+    border: none;
+    background: none;
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all 0.2s ease;
+    letter-spacing: 0.01em;
+    position: relative;
+    top: 1px;
+    white-space: nowrap;
+  }
+
+  .novel-tab:hover { color: var(--amber-light); }
+
+  .novel-tab.active {
+    color: var(--amber-light);
+    border-bottom-color: var(--amber);
+    font-weight: 600;
+  }
+
+  /* ─── Main Content Grid ─────────────────────────────────────── */
+  .main-content {
+    max-width: 1440px;
+    margin: 0 auto;
+    padding: 2.5rem 3rem 4rem;
+    display: grid;
+    grid-template-columns: 1fr 340px;
+    gap: 2.5rem;
+    align-items: start;
+  }
+
+  /* ─── Chart Panel ───────────────────────────────────────────── */
+  .chart-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  .chart-header {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+  }
+
+  .chart-title-group {}
+
+  .chart-label {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-bottom: 0.25rem;
+  }
+
+  .chart-title {
+    font-family: var(--font-display);
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--ink);
+    font-style: italic;
+  }
+
+  .chart-actions {
+    display: flex;
+    gap: 0.5rem;
+  }
+
+  .btn-action {
+    font-family: var(--font-mono);
+    font-size: 0.7rem;
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    padding: 0.45rem 1rem;
+    border: 1px solid var(--border);
+    background: white;
+    color: var(--muted);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    border-radius: 2px;
+  }
+
+  .btn-action:hover {
+    border-color: var(--amber);
+    color: var(--amber);
+    background: rgba(200,132,42,0.04);
+  }
+
+  /* ─── Word Toggle Buttons ───────────────────────────────────── */
+  .word-toggles {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    padding: 1rem 1.25rem;
+    background: white;
+    border: 1px solid var(--border-soft);
+    border-radius: 4px;
+  }
+
+  .word-toggle {
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+    letter-spacing: 0.05em;
+    padding: 0.35rem 0.875rem;
+    border: 1.5px solid var(--border);
+    background: none;
+    cursor: pointer;
+    border-radius: 2px;
+    transition: all 0.18s ease;
+    color: var(--muted);
+    position: relative;
+    overflow: hidden;
+  }
+
+  .word-toggle::before {
+    content: '';
+    position: absolute;
+    left: 0; top: 0; bottom: 0;
+    width: 3px;
+    background: var(--color, var(--amber));
+    opacity: 0;
+    transition: opacity 0.18s ease;
+  }
+
+  .word-toggle.active {
+    color: var(--ink);
+    border-color: var(--color, var(--amber));
+    background: rgba(0,0,0,0.02);
+  }
+
+  .word-toggle.active::before { opacity: 1; }
+
+  .word-toggle:hover {
+    border-color: var(--color, var(--amber));
+    color: var(--ink);
+  }
+
+  /* ─── Chart Container ───────────────────────────────────────── */
+  .chart-box {
+    background: white;
+    border: 1px solid var(--border-soft);
+    border-radius: 4px;
+    padding: 1.5rem 1.5rem 1rem;
+    position: relative;
+    box-shadow: 0 2px 20px var(--shadow);
+  }
+
+  .chart-box canvas {
+    max-height: 420px;
+  }
+
+  /* ─── Segment Explorer ──────────────────────────────────────── */
+  .segment-explorer {
+    background: var(--ink);
+    color: var(--parchment);
+    border-radius: 4px;
+    padding: 1.5rem;
+    min-height: 100px;
+    transition: all 0.3s ease;
+    border: 1px solid rgba(200,132,42,0.15);
+  }
+
+  .segment-explorer.empty {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-body);
+    font-style: italic;
+    color: rgba(245,240,232,0.3);
+    font-size: 0.95rem;
+  }
+
+  .segment-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 1rem;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(200,132,42,0.2);
+  }
+
+  .segment-badge {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--amber);
+  }
+
+  .segment-freq {
+    font-family: var(--font-mono);
+    font-size: 1.1rem;
+    font-weight: 500;
+    color: var(--amber-light);
+  }
+
+  .segment-snippet {
+    font-family: var(--font-body);
+    font-size: 0.95rem;
+    line-height: 1.7;
+    color: rgba(245,240,232,0.7);
+    font-style: italic;
+    font-weight: 300;
+  }
+
+  .segment-snippet em {
+    color: var(--amber-light);
+    font-style: normal;
+    font-weight: 600;
+  }
+
+  /* ─── Sidebar ───────────────────────────────────────────────── */
+  .sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+  }
+
+  /* ─── Panel Card ────────────────────────────────────────────── */
+  .panel-card {
+    background: white;
+    border: 1px solid var(--border-soft);
+    border-radius: 4px;
+    overflow: hidden;
+    box-shadow: 0 1px 8px var(--shadow);
+  }
+
+  .panel-card-header {
+    padding: 0.875rem 1.25rem;
+    background: var(--parchment);
+    border-bottom: 1px solid var(--border-soft);
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+  }
+
+  .panel-card-header .icon {
+    width: 16px;
+    height: 16px;
+    color: var(--amber);
+    flex-shrink: 0;
+  }
+
+  .panel-card-title {
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--slate);
+    font-weight: 500;
+  }
+
+  .panel-card-body {
+    padding: 1.25rem;
+  }
+
+  /* ─── Insights ──────────────────────────────────────────────── */
+  .insight-list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+  }
+
+  .insight-item {
+    padding: 0.75rem 0.875rem;
+    background: var(--paper);
+    border-left: 2px solid var(--border);
+    font-family: var(--font-body);
+    font-size: 0.92rem;
+    line-height: 1.6;
+    color: var(--slate);
+    transition: border-color 0.2s;
+    border-radius: 0 2px 2px 0;
+  }
+
+  .insight-item.trend    { border-left-color: var(--teal); }
+  .insight-item.peak     { border-left-color: var(--amber); }
+  .insight-item.dominant { border-left-color: var(--rust); }
+  .insight-item.corr     { border-left-color: #5a3a7e; }
+
+  .insight-item strong {
+    font-family: var(--font-mono);
+    font-size: 0.8em;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    display: block;
+    margin-bottom: 0.25rem;
+  }
+
+  .insight-item.trend    strong { color: var(--teal); }
+  .insight-item.peak     strong { color: var(--amber); }
+  .insight-item.dominant strong { color: var(--rust); }
+  .insight-item.corr     strong { color: #5a3a7e; }
+
+  /* ─── Correlation Matrix ────────────────────────────────────── */
+  .corr-grid {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .corr-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr auto;
+    align-items: center;
+    gap: 0.5rem;
+    font-family: var(--font-mono);
+    font-size: 0.72rem;
+  }
+
+  .corr-words {
+    color: var(--slate);
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+  }
+
+  .corr-bar-track {
+    height: 4px;
+    background: var(--border-soft);
+    border-radius: 2px;
+    overflow: hidden;
+  }
+
+  .corr-bar-fill {
+    height: 100%;
+    border-radius: 2px;
+    transition: width 0.5s ease;
+  }
+
+  .corr-value {
+    color: var(--muted);
+    text-align: right;
+    min-width: 40px;
+  }
+
+  /* ─── Stats Bar ─────────────────────────────────────────────── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.75rem;
+  }
+
+  .stat-cell {
+    padding: 0.75rem;
+    background: var(--paper);
+    border-radius: 3px;
+    text-align: center;
+  }
+
+  .stat-value {
+    font-family: var(--font-display);
+    font-size: 1.4rem;
+    font-weight: 700;
+    color: var(--amber);
+    display: block;
+    line-height: 1;
+  }
+
+  .stat-label {
+    font-family: var(--font-mono);
+    font-size: 0.6rem;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--muted);
+    margin-top: 0.25rem;
+    display: block;
+  }
+
+  /* ─── Upload Zone ───────────────────────────────────────────── */
+  .upload-zone {
+    border: 1.5px dashed var(--border);
+    border-radius: 4px;
+    padding: 1.5rem;
+    text-align: center;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    background: none;
+    width: 100%;
+    font-family: var(--font-body);
+  }
+
+  .upload-zone:hover, .upload-zone.drag-over {
+    border-color: var(--amber);
+    background: rgba(200,132,42,0.03);
+  }
+
+  .upload-zone-icon {
+    margin: 0 auto 0.75rem;
+    width: 32px;
+    height: 32px;
+    color: var(--muted);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .upload-zone-text {
+    font-size: 0.88rem;
+    color: var(--muted);
+    font-style: italic;
+  }
+
+  .upload-zone-text strong {
+    color: var(--amber);
+    font-style: normal;
+    font-weight: 600;
+  }
+
+  #file-input { display: none; }
+
+  /* ─── Loading Spinner ───────────────────────────────────────── */
+  .loading-overlay {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(245,240,232,0.9);
+    z-index: 1000;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    gap: 1rem;
+  }
+
+  .loading-overlay.active { display: flex; }
+
+  .spinner {
+    width: 40px;
+    height: 40px;
+    border: 2px solid var(--border);
+    border-top-color: var(--amber);
+    border-radius: 50%;
+    animation: spin 0.8s linear infinite;
+  }
+
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  .loading-text {
+    font-family: var(--font-mono);
+    font-size: 0.75rem;
+    letter-spacing: 0.15em;
+    text-transform: uppercase;
+    color: var(--muted);
+  }
+
+  /* ─── Footer ────────────────────────────────────────────────── */
+  .site-footer {
+    border-top: 1px solid var(--border-soft);
+    padding: 1.25rem 3rem;
+    max-width: 1440px;
+    margin: 0 auto;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-family: var(--font-mono);
+    font-size: 0.65rem;
+    letter-spacing: 0.1em;
+    color: var(--muted);
+    text-transform: uppercase;
+  }
+
+  /* ─── Responsive ────────────────────────────────────────────── */
+  @media (max-width: 1100px) {
+    .main-content { grid-template-columns: 1fr; padding: 2rem 1.5rem; }
+    .sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
+    .header-inner { padding: 2rem 1.5rem 1.5rem; }
+    .novel-tabs-bar { padding: 0 1.5rem; }
+    .site-footer { padding: 1rem 1.5rem; }
+  }
+
+  @media (max-width: 700px) {
+    .sidebar { grid-template-columns: 1fr; }
+    .header-inner { grid-template-columns: 1fr; }
+    .header-meta { text-align: left; }
+    .novel-tabs { overflow-x: auto; }
+    .novel-tab { padding: 0.65rem 1rem; font-size: 0.82rem; }
+  }
+
+  /* ─── Animations ────────────────────────────────────────────── */
+  @keyframes fadeUp {
+    from { opacity: 0; transform: translateY(12px); }
+    to   { opacity: 1; transform: translateY(0); }
+  }
+
+  .chart-panel  { animation: fadeUp 0.5s ease 0.1s both; }
+  .sidebar      { animation: fadeUp 0.5s ease 0.2s both; }
+
+  /* ─── Scrollbar ─────────────────────────────────────────────── */
+  ::-webkit-scrollbar { width: 6px; height: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+  ::-webkit-scrollbar-thumb:hover { background: var(--muted); }
+</style>
+</head>
+
+<body>
+<div class="app-wrapper">
+
+  <!-- ── Header ─────────────────────────────────────────────── -->
+  <header class="site-header">
+    <div class="header-inner">
+      <div>
+        <div class="header-eyebrow">NLP &amp; Data Visualization</div>
+        <h1 class="site-title">Corpus <em>Rhythm</em> Detector</h1>
+        <p class="site-subtitle">Temporal word frequency analysis of the literary canon</p>
+      </div>
+      <div class="header-meta">
+        <div>Segments per novel: 90</div>
+        <div>Normalization: per 10,000 words</div>
+        <div>Pattern detection: active</div>
+      </div>
+    </div>
+
+    <!-- Novel Tabs -->
+    <div class="novel-tabs-bar">
+      <div class="novel-tabs" id="novel-tabs">
+        <button class="novel-tab active" data-novel="moby_dick">Moby Dick</button>
+        <button class="novel-tab" data-novel="war_and_peace">War and Peace</button>
+        <button class="novel-tab" data-novel="crime_and_punishment">Crime and Punishment</button>
+      </div>
+    </div>
+  </header>
+
+  <!-- ── Main ────────────────────────────────────────────────── -->
+  <main>
+    <div class="main-content">
+
+      <!-- ── Left: Chart Panel ─────────────────────────────── -->
+      <section class="chart-panel">
+
+        <div class="chart-header">
+          <div class="chart-title-group">
+            <div class="chart-label">Word Frequency Over Narrative Time</div>
+            <div class="chart-title" id="chart-title">Moby Dick</div>
+          </div>
+          <div class="chart-actions">
+            <button class="btn-action" id="btn-select-all">All</button>
+            <button class="btn-action" id="btn-select-none">None</button>
+            <button class="btn-action" id="btn-export">Export PNG</button>
+          </div>
+        </div>
+
+        <!-- Word toggles -->
+        <div class="word-toggles" id="word-toggles"></div>
+
+        <!-- Chart -->
+        <div class="chart-box">
+          <canvas id="main-chart"></canvas>
+        </div>
+
+        <!-- Segment Explorer -->
+        <div class="segment-explorer empty" id="segment-explorer">
+          Click any data point to explore that segment
+        </div>
+
+      </section>
+
+      <!-- ── Right: Sidebar ────────────────────────────────── -->
+      <aside class="sidebar">
+
+        <!-- Stats -->
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M3 3v18h18M7 16l4-4 4 4 4-8" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+            <span class="panel-card-title">Corpus Statistics</span>
+          </div>
+          <div class="panel-card-body">
+            <div class="stats-grid" id="stats-grid">
+              <div class="stat-cell">
+                <span class="stat-value" id="stat-tokens">—</span>
+                <span class="stat-label">Total Tokens</span>
+              </div>
+              <div class="stat-cell">
+                <span class="stat-value" id="stat-segments">—</span>
+                <span class="stat-label">Segments</span>
+              </div>
+              <div class="stat-cell">
+                <span class="stat-value" id="stat-words">—</span>
+                <span class="stat-label">Tracked Words</span>
+              </div>
+              <div class="stat-cell">
+                <span class="stat-value" id="stat-peaks">—</span>
+                <span class="stat-label">Total Peaks</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Insights -->
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 2a7 7 0 0 1 7 7c0 3.5-2.5 5.5-3 8H8c-.5-2.5-3-4.5-3-8a7 7 0 0 1 7-7z" stroke-linecap="round"/>
+              <path d="M9 21h6M10 17h4" stroke-linecap="round"/>
+            </svg>
+            <span class="panel-card-title">Literary Insights</span>
+          </div>
+          <div class="panel-card-body">
+            <ul class="insight-list" id="insight-list"></ul>
+          </div>
+        </div>
+
+        <!-- Correlations -->
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <circle cx="5" cy="19" r="2"/><circle cx="12" cy="5" r="2"/><circle cx="19" cy="14" r="2"/>
+              <line x1="5" y1="17" x2="12" y2="7"/><line x1="12" y1="7" x2="19" y2="12"/>
+            </svg>
+            <span class="panel-card-title">Word Correlations</span>
+          </div>
+          <div class="panel-card-body">
+            <div class="corr-grid" id="corr-grid"></div>
+          </div>
+        </div>
+
+        <!-- Upload -->
+        <div class="panel-card">
+          <div class="panel-card-header">
+            <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+              <path d="M12 16V4m0 0-3 3m3-3 3 3" stroke-linecap="round" stroke-linejoin="round"/>
+              <path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2" stroke-linecap="round"/>
+            </svg>
+            <span class="panel-card-title">Custom Upload</span>
+          </div>
+          <div class="panel-card-body">
+            <label class="upload-zone" id="upload-zone" for="file-input">
+              <div class="upload-zone-icon">
+                <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.2">
+                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                  <path d="M14 2v6h6M12 12v6M9 15l3-3 3 3"/>
+                </svg>
+              </div>
+              <div class="upload-zone-text">
+                Drop a <strong>.txt</strong> novel here<br/>or click to browse
+              </div>
+            </label>
+            <input type="file" id="file-input" accept=".txt,.json" />
+          </div>
+        </div>
+
+      </aside>
+    </div>
+
+    <footer class="site-footer">
+      <span>Corpus Rhythm Detector</span>
+      <span>Digital Humanities Tool &mdash; NLP + Data Visualization</span>
+      <span>Public Domain Texts via Project Gutenberg</span>
+    </footer>
+  </main>
+</div>
+
+<!-- Loading -->
+<div class="loading-overlay" id="loading-overlay">
+  <div class="spinner"></div>
+  <div class="loading-text">Processing corpus...</div>
+</div>
+
+<!-- ── JavaScript ──────────────────────────────────────────────── -->
+<script>
+/* ═══════════════════════════════════════════════════════════════
+   CORPUS RHYTHM DETECTOR — Frontend Engine
+   ═══════════════════════════════════════════════════════════════ */
+
+// ── Palette ─────────────────────────────────────────────────────
+const PALETTE = [
+  '#c8842a', '#1e6b6e', '#9c3a1e',
+  '#4a6e3a', '#5a3a7e', '#2a5e7a',
+  '#7a4a2a', '#3a6e5a'
+];
+
+// ── Simulated Dataset ────────────────────────────────────────────
+// In production, this is loaded from analysis.json produced by preprocess.py.
+// Here we generate realistic-looking synthetic data for demo purposes.
+
+function generateSeries(base, amplitude, freq, noise, n = 90) {
+  return Array.from({ length: n }, (_, i) => {
+    const trend  = base + (amplitude * 0.3) * (i / n);
+    const wave   = amplitude * Math.sin((i / n) * Math.PI * freq);
+    const rnd    = (Math.random() - 0.5) * noise;
+    return Math.max(0, parseFloat((trend + wave + rnd).toFixed(3)));
+  });
+}
+
+// ── Pearson correlation (JS) ─────────────────────────────────────
+function pearson(a, b) {
+  const n = a.length;
+  const ma = a.reduce((s, x) => s + x, 0) / n;
+  const mb = b.reduce((s, x) => s + x, 0) / n;
+  let num = 0, da = 0, db = 0;
+  for (let i = 0; i < n; i++) {
+    num += (a[i] - ma) * (b[i] - mb);
+    da  += (a[i] - ma) ** 2;
+    db  += (b[i] - mb) ** 2;
+  }
+  if (da === 0 || db === 0) return 0;
+  return parseFloat((num / Math.sqrt(da * db)).toFixed(4));
+}
+
+// ── Peak detection ───────────────────────────────────────────────
+function detectPeaks(series, factor = 1.4) {
+  const mean = series.reduce((a, b) => a + b, 0) / series.length;
+  const peaks = [];
+  for (let i = 1; i < series.length - 1; i++) {
+    if (series[i] > series[i - 1] && series[i] > series[i + 1] && series[i] > mean * factor) {
+      peaks.push(i);
+    }
+  }
+  return peaks;
+}
+
+// ── Trend detection ──────────────────────────────────────────────
+function detectTrend(series) {
+  const n = series.length;
+  const xm = (n - 1) / 2;
+  const ym = series.reduce((a, b) => a + b, 0) / n;
+  let num = 0, den = 0;
+  for (let i = 0; i < n; i++) {
+    num += (i - xm) * (series[i] - ym);
+    den += (i - xm) ** 2;
+  }
+  const slope = den === 0 ? 0 : num / den;
+  return { slope: parseFloat(slope.toFixed(6)), label: slope > 0.003 ? 'increasing' : slope < -0.003 ? 'decreasing' : 'flat' };
+}
+
+// ── Build novel data ─────────────────────────────────────────────
+function buildNovelData(config) {
+  const { words, generators, title, tokens, snippets } = config;
+  const series = {};
+  const patterns = {};
+
+  words.forEach((w, i) => {
+    const s = generators[i]();
+    series[w] = s;
+    const peaks = detectPeaks(s);
+    const trend  = detectTrend(s);
+    const mean   = s.reduce((a, b) => a + b, 0) / s.length;
+    const insights = [];
+
+    if (trend.label === 'increasing')
+      insights.push({ type: 'trend', text: `"${w}" grows in prominence — its thematic weight increases as the narrative advances.` });
+    else if (trend.label === 'decreasing')
+      insights.push({ type: 'trend', text: `"${w}" fades across the text — its significance diminishes toward the conclusion.` });
+    else
+      insights.push({ type: 'trend', text: `"${w}" maintains a stable presence throughout — a persistent leitmotif.` });
+
+    if (peaks.length > 4)
+      insights.push({ type: 'peak', text: `"${w}" shows ${peaks.length} periodic spikes — suggesting rhythmic recurrence in the narrative.` });
+    else if (peaks.length > 0)
+      insights.push({ type: 'peak', text: `"${w}" peaks at segments ${peaks.slice(0, 3).map(p => p + 1).join(', ')} — likely key narrative moments.` });
+
+    if (mean > 20)
+      insights.push({ type: 'dominant', text: `"${w}" is a dominant lexical force (avg ${mean.toFixed(1)} per 10k words).` });
+
+    patterns[w] = { peaks, trend, insights, max: Math.max(...s), mean };
+  });
+
+  // Correlations
+  const correlations = {};
+  for (let i = 0; i < words.length; i++) {
+    for (let j = i + 1; j < words.length; j++) {
+      const key = `${words[i]}_vs_${words[j]}`;
+      correlations[key] = pearson(series[words[i]], series[words[j]]);
+    }
+  }
+
+  // Segments
+  const N = 90;
+  const segments = Array.from({ length: N }, (_, i) => ({
+    index: i,
+    snippet: snippets[i % snippets.length]
+  }));
+
+  return {
+    meta: { title, total_tokens: tokens, num_segments: N, target_words: words },
+    words: series,
+    patterns,
+    correlations,
+    segments
+  };
+}
+
+// ── Novel Definitions ────────────────────────────────────────────
+const NOVELS = {
+  moby_dick: buildNovelData({
+    title: 'Moby Dick',
+    tokens: 218621,
+    words: ['whale', 'ahab', 'sea', 'ship', 'white', 'captain', 'water', 'boat'],
+    generators: [
+      () => generateSeries(6,  18, 3.2, 4),   // whale
+      () => generateSeries(2,  22, 2.8, 3),   // ahab
+      () => generateSeries(8,  10, 4.0, 5),   // sea
+      () => generateSeries(10, 8,  2.0, 4),   // ship
+      () => generateSeries(3,  14, 1.8, 3),   // white
+      () => generateSeries(12, 7,  1.5, 3),   // captain
+      () => generateSeries(9,  11, 3.5, 4),   // water
+      () => generateSeries(5,  9,  2.2, 3),   // boat
+    ],
+    snippets: [
+      'call me ishmael some years ago never mind how long precisely having little or no money in my purse and nothing particular to interest me on shore i thought i would sail about a little',
+      'the pale usher threadbare in coat concept step aside i must first tell thee what whaling is did you ever see a whale no never never did you ever stand in the bows of a ship',
+      'already we are boldly launched upon the deep but soon we shall be lost in its unshored harborless immensities ere that come to pass we must have a talk about this leviathan',
+      'there she blows the lookout shouts there she blows a hump like a snow hill it is moby dick cried ahab his whole high broad form seemed made of solid bronze and shaped in an unalterable mould',
+      'from that hour i clove to queequeg like a barnacle yea till poor queequeg took his last long dive the sea was his element and he swam in it',
+    ]
+  }),
+
+  war_and_peace: buildNovelData({
+    title: 'War and Peace',
+    tokens: 560045,
+    words: ['war', 'peace', 'pierre', 'natasha', 'napoleon', 'prince', 'battle', 'love'],
+    generators: [
+      () => generateSeries(5,  20, 2.5, 4),   // war
+      () => generateSeries(12, 8,  1.8, 3),   // peace
+      () => generateSeries(8,  15, 3.0, 4),   // pierre
+      () => generateSeries(7,  14, 2.8, 3),   // natasha
+      () => generateSeries(3,  18, 2.2, 5),   // napoleon
+      () => generateSeries(14, 10, 1.5, 3),   // prince
+      () => generateSeries(4,  22, 2.0, 5),   // battle
+      () => generateSeries(10, 12, 2.5, 3),   // love
+    ],
+    snippets: [
+      'well prince so genoa and lucca are now just family estates of the buonapartes anna pavlovna was in a hurry to nip in the bud the idea of any such alliance',
+      'pierre had felt that this was the moment when all explanations and preparations were over and he must go out and fight the battle of life without advisers',
+      'natasha did not finish she could not talk like that she had known for a long time that he loved her but in hearing it now she was frightened',
+      'the fog began to clear and over the two mile expanse the french troops were now dimly visible the hussars could not retreat with the fog so dense',
+      'it was one of those autumnal days when the air is transparent and there is a smell of fallen leaves a tender blue sky peeping through the tattered clouds',
+    ]
+  }),
+
+  crime_and_punishment: buildNovelData({
+    title: 'Crime and Punishment',
+    tokens: 211591,
+    words: ['guilt', 'raskolnikov', 'crime', 'murder', 'punishment', 'soul', 'money', 'suffer'],
+    generators: [
+      () => generateSeries(2,  24, 2.0, 4),   // guilt
+      () => generateSeries(15, 12, 1.5, 3),   // raskolnikov
+      () => generateSeries(4,  20, 2.5, 4),   // crime
+      () => generateSeries(3,  18, 1.8, 4),   // murder
+      () => generateSeries(2,  16, 1.6, 3),   // punishment
+      () => generateSeries(6,  14, 3.0, 4),   // soul
+      () => generateSeries(9,  10, 2.8, 4),   // money
+      () => generateSeries(5,  16, 2.2, 3),   // suffer
+    ],
+    snippets: [
+      'on an exceptionally hot evening early in july a young man came out of the garret in which he lodged in s place and walked slowly as though in hesitation towards k bridge',
+      'he felt crushed by a mysterious terror that had seized him the terror was growing and was not decreasing the longer he sat there thinking about his idea the more convinced he was',
+      'raskolnikov had not entered any tavern for the last three weeks and besides all the suffocation in the streets he had endured an attack of his usual malaise',
+      'did i do the right thing he kept asking himself have i committed a crime but no he answered he had only done what was necessary had rid the world of a louse',
+      'sonya looked at him her eyes were full of tears she suddenly rushed to him and threw her arms around his neck i do not know i do not know how one can go on living',
+    ]
+  })
+};
+
+// ─── App State ───────────────────────────────────────────────────
+let currentNovel  = 'moby_dick';
+let activeWords   = new Set();
+let chartInstance = null;
+
+// ─── DOM References ──────────────────────────────────────────────
+const dom = {
+  chartCanvas:       document.getElementById('main-chart'),
+  wordToggles:       document.getElementById('word-toggles'),
+  novelTabs:         document.getElementById('novel-tabs'),
+  chartTitle:        document.getElementById('chart-title'),
+  insightList:       document.getElementById('insight-list'),
+  corrGrid:          document.getElementById('corr-grid'),
+  segmentExplorer:   document.getElementById('segment-explorer'),
+  statTokens:        document.getElementById('stat-tokens'),
+  statSegments:      document.getElementById('stat-segments'),
+  statWords:         document.getElementById('stat-words'),
+  statPeaks:         document.getElementById('stat-peaks'),
+  btnSelectAll:      document.getElementById('btn-select-all'),
+  btnSelectNone:     document.getElementById('btn-select-none'),
+  btnExport:         document.getElementById('btn-export'),
+  uploadZone:        document.getElementById('upload-zone'),
+  fileInput:         document.getElementById('file-input'),
+  loadingOverlay:    document.getElementById('loading-overlay'),
+};
+
+// ─── Format numbers ──────────────────────────────────────────────
+function fmtNum(n) {
+  if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
+  if (n >= 1000)    return (n / 1000).toFixed(0) + 'k';
+  return String(n);
+}
+
+// ─── Build Word Toggle Buttons ───────────────────────────────────
+function renderToggles(novel) {
+  const data = NOVELS[novel];
+  dom.wordToggles.innerHTML = '';
+
+  data.meta.target_words.forEach((word, i) => {
+    const color = PALETTE[i % PALETTE.length];
+    const btn = document.createElement('button');
+    btn.className = 'word-toggle' + (activeWords.has(word) ? ' active' : '');
+    btn.textContent = word;
+    btn.dataset.word = word;
+    btn.style.setProperty('--color', color);
+    btn.addEventListener('click', () => toggleWord(word, btn));
+    dom.wordToggles.appendChild(btn);
+  });
+}
+
+// ─── Toggle a word on/off ────────────────────────────────────────
+function toggleWord(word, btn) {
+  if (activeWords.has(word)) {
+    activeWords.delete(word);
+    btn.classList.remove('active');
+  } else {
+    activeWords.add(word);
+    btn.classList.add('active');
+  }
+  updateChart();
+}
+
+// ─── Build / Update Chart ────────────────────────────────────────
+function updateChart() {
+  const data   = NOVELS[currentNovel];
+  const words  = [...activeWords];
+  const labels = Array.from({ length: data.meta.num_segments }, (_, i) => i + 1);
+
+  const datasets = words.map((word, i) => {
+    const idx   = data.meta.target_words.indexOf(word);
+    const color = PALETTE[idx % PALETTE.length];
+    return {
+      label: word,
+      data: data.words[word],
+      borderColor: color,
+      backgroundColor: color + '18',
+      borderWidth: 1.8,
+      pointRadius: 0,
+      pointHoverRadius: 5,
+      pointHoverBackgroundColor: color,
+      pointHoverBorderColor: '#ffffff',
+      pointHoverBorderWidth: 2,
+      tension: 0.35,
+      fill: false,
+    };
+  });
+
+  if (chartInstance) {
+    chartInstance.data.labels   = labels;
+    chartInstance.data.datasets = datasets;
+    chartInstance.update('active');
+    return;
+  }
+
+  // Create new
+  chartInstance = new Chart(dom.chartCanvas, {
+    type: 'line',
+    data: { labels, datasets },
+    options: {
+      responsive: true,
+      maintainAspectRatio: true,
+      interaction: { mode: 'index', intersect: false },
+      plugins: {
+        legend: { display: false },
+        tooltip: {
+          backgroundColor: '#0e0d0b',
+          titleColor: '#c8842a',
+          bodyColor: '#f5f0e8',
+          borderColor: 'rgba(200,132,42,0.3)',
+          borderWidth: 1,
+          padding: 12,
+          titleFont: { family: "'DM Mono', monospace", size: 11 },
+          bodyFont: { family: "'Crimson Pro', serif", size: 13 },
+          callbacks: {
+            title: (items) => `Segment ${items[0].label}`,
+            label: (item) => ` ${item.dataset.label}: ${item.raw.toFixed(2)} per 10k`,
+          },
+        },
+      },
+      scales: {
+        x: {
+          grid: { color: 'rgba(0,0,0,0.04)' },
+          ticks: {
+            font: { family: "'DM Mono', monospace", size: 10 },
+            color: '#7a7060',
+            maxTicksLimit: 18,
+          },
+          title: {
+            display: true,
+            text: 'Narrative Segment',
+            font: { family: "'DM Mono', monospace", size: 10 },
+            color: '#7a7060',
+          }
+        },
+        y: {
+          grid: { color: 'rgba(0,0,0,0.05)' },
+          ticks: {
+            font: { family: "'DM Mono', monospace", size: 10 },
+            color: '#7a7060',
+          },
+          title: {
+            display: true,
+            text: 'Freq. per 10k Words',
+            font: { family: "'DM Mono', monospace", size: 10 },
+            color: '#7a7060',
+          }
+        }
+      },
+      onClick: (evt, elements) => {
+        if (!elements.length) return;
+        const el    = elements[0];
+        const segIdx = el.index;
+        const word  = chartInstance.data.datasets[el.datasetIndex].label;
+        showSegment(segIdx, word);
+      }
+    }
+  });
+}
+
+// ─── Show Segment Explorer ────────────────────────────────────────
+function showSegment(idx, word) {
+  const data    = NOVELS[currentNovel];
+  const seg     = data.segments[idx];
+  const freq    = word ? data.words[word][idx].toFixed(2) : '—';
+  const snippet = seg ? seg.snippet : 'No snippet available.';
+
+  // Highlight the word
+  const re = new RegExp(`\\b(${word})\\b`, 'gi');
+  const highlighted = snippet.replace(re, '<em>$1</em>');
+
+  dom.segmentExplorer.classList.remove('empty');
+  dom.segmentExplorer.innerHTML = `
+    <div class="segment-header">
+      <span class="segment-badge">Segment ${idx + 1} of ${data.meta.num_segments}</span>
+      <span class="segment-freq">${freq} <small style="font-size:0.6em;opacity:0.7">per 10k</small></span>
+    </div>
+    <p class="segment-snippet">"${highlighted}..."</p>
+  `;
+}
+
+// ─── Render Insights ─────────────────────────────────────────────
+function renderInsights(novel) {
+  const data = NOVELS[novel];
+  dom.insightList.innerHTML = '';
+
+  const allInsights = [];
+
+  data.meta.target_words.forEach(word => {
+    const p = data.patterns[word];
+    p.insights.forEach(ins => allInsights.push(ins));
+  });
+
+  // Add cross-word correlation insights
+  const topCorr = Object.entries(data.correlations)
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+    .slice(0, 2);
+
+  topCorr.forEach(([key, r]) => {
+    const [w1, w2] = key.split('_vs_');
+    if (Math.abs(r) > 0.4) {
+      const rel = r > 0 ? 'synchronized' : 'inverse';
+      allInsights.push({
+        type: 'corr',
+        text: `"${w1}" and "${w2}" show a ${rel} relationship (r = ${r.toFixed(2)}).`
+      });
+    }
+  });
+
+  // Render top 7
+  allInsights.slice(0, 7).forEach(ins => {
+    const li = document.createElement('li');
+    li.className = `insight-item ${ins.type}`;
+    const label = { trend: 'Trend', peak: 'Peak Pattern', dominant: 'Lexical Density', corr: 'Correlation' }[ins.type] || 'Insight';
+    li.innerHTML = `<strong>${label}</strong>${ins.text}`;
+    dom.insightList.appendChild(li);
+  });
+}
+
+// ─── Render Correlations ──────────────────────────────────────────
+function renderCorrelations(novel) {
+  const data = NOVELS[novel];
+  dom.corrGrid.innerHTML = '';
+
+  const sorted = Object.entries(data.correlations)
+    .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
+    .slice(0, 6);
+
+  sorted.forEach(([key, r]) => {
+    const [w1, w2] = key.split('_vs_');
+    const absR  = Math.abs(r);
+    const color = r >= 0 ? '#1e6b6e' : '#9c3a1e';
+    const pct   = (absR * 100).toFixed(0);
+
+    const row = document.createElement('div');
+    row.className = 'corr-row';
+    row.innerHTML = `
+      <span class="corr-words">${w1} / ${w2}</span>
+      <div class="corr-bar-track">
+        <div class="corr-bar-fill" style="width:${pct}%;background:${color};"></div>
+      </div>
+      <span class="corr-value" style="color:${color}">${r.toFixed(2)}</span>
+    `;
+    dom.corrGrid.appendChild(row);
+  });
+}
+
+// ─── Render Stats ─────────────────────────────────────────────────
+function renderStats(novel) {
+  const data = NOVELS[novel];
+  dom.statTokens.textContent   = fmtNum(data.meta.total_tokens);
+  dom.statSegments.textContent = data.meta.num_segments;
+  dom.statWords.textContent    = data.meta.target_words.length;
+
+  const totalPeaks = Object.values(data.patterns)
+    .reduce((sum, p) => sum + p.peaks.length, 0);
+  dom.statPeaks.textContent = totalPeaks;
+}
+
+// ─── Switch Novel ─────────────────────────────────────────────────
+function switchNovel(id) {
+  currentNovel = id;
+  activeWords  = new Set(NOVELS[id].meta.target_words.slice(0, 3));
+
+  // Update tabs
+  document.querySelectorAll('.novel-tab').forEach(t => {
+    t.classList.toggle('active', t.dataset.novel === id);
+  });
+
+  dom.chartTitle.textContent = NOVELS[id].meta.title;
+
+  // Destroy old chart
+  if (chartInstance) {
+    chartInstance.destroy();
+    chartInstance = null;
+  }
+
+  // Reset explorer
+  dom.segmentExplorer.innerHTML = 'Click any data point to explore that segment';
+  dom.segmentExplorer.classList.add('empty');
+
+  renderToggles(id);
+  updateChart();
+  renderInsights(id);
+  renderCorrelations(id);
+  renderStats(id);
+}
+
+// ─── Tab Clicks ───────────────────────────────────────────────────
+dom.novelTabs.addEventListener('click', e => {
+  const tab = e.target.closest('.novel-tab');
+  if (tab) switchNovel(tab.dataset.novel);
+});
+
+// ─── Select All / None ────────────────────────────────────────────
+dom.btnSelectAll.addEventListener('click', () => {
+  const words = NOVELS[currentNovel].meta.target_words;
+  activeWords = new Set(words);
+  document.querySelectorAll('.word-toggle').forEach(b => b.classList.add('active'));
+  updateChart();
+});
+
+dom.btnSelectNone.addEventListener('click', () => {
+  activeWords = new Set();
+  document.querySelectorAll('.word-toggle').forEach(b => b.classList.remove('active'));
+  updateChart();
+});
+
+// ─── Export PNG ───────────────────────────────────────────────────
+dom.btnExport.addEventListener('click', () => {
+  if (!chartInstance) return;
+  const link = document.createElement('a');
+  link.download = `corpus-rhythm-${currentNovel}.png`;
+  link.href = dom.chartCanvas.toDataURL('image/png');
+  link.click();
+});
+
+// ─── File Upload ─────────────────────────────────────────────────
+dom.fileInput.addEventListener('change', e => {
+  const file = e.target.files[0];
+  if (!file) return;
+  handleFileUpload(file);
+});
+
+dom.uploadZone.addEventListener('dragover', e => {
+  e.preventDefault();
+  dom.uploadZone.classList.add('drag-over');
+});
+dom.uploadZone.addEventListener('dragleave', () => dom.uploadZone.classList.remove('drag-over'));
+dom.uploadZone.addEventListener('drop', e => {
+  e.preventDefault();
+  dom.uploadZone.classList.remove('drag-over');
+  const file = e.dataTransfer.files[0];
+  if (file) handleFileUpload(file);
+});
+
+function handleFileUpload(file) {
+  dom.loadingOverlay.classList.add('active');
+
+  const reader = new FileReader();
+  reader.onload = (e) => {
+    const content = e.target.result;
+
+    setTimeout(() => {
+      dom.loadingOverlay.classList.remove('active');
+
+      try {
+        if (file.name.endsWith('.json')) {
+          // Load analysis.json directly
+          const json = JSON.parse(content);
+          injectNovelData(json, file.name.replace('.json', ''));
+        } else {
+          // .txt: run in-browser preprocessing
+          processTxtInBrowser(content, file.name.replace('.txt', ''));
+        }
+      } catch (err) {
+        alert('Error reading file: ' + err.message);
+      }
+    }, 1200);
+  };
+
+  reader.readAsText(file);
+}
+
+// ── In-browser lightweight text processor ─────────────────────────
+function processTxtInBrowser(text, title) {
+  // Remove Gutenberg headers
+  const startRx = /\*\*\* ?START OF (THE|THIS) PROJECT GUTENBERG/i;
+  const endRx   = /\*\*\* ?END OF (THE|THIS) PROJECT GUTENBERG/i;
+  const s = text.search(startRx);
+  const e = text.search(endRx);
+  if (s !== -1) text = text.slice(text.indexOf('\n', s) + 1);
+  if (e !== -1) text = text.slice(0, e);
+
+  // Tokenize
+  const tokens = text.toLowerCase().match(/\b[a-z']+\b/g) || [];
+
+  if (tokens.length < 500) {
+    alert('File too short — please upload a full novel text.');
+    return;
+  }
+
+  // Segment
+  const N    = 90;
+  const size = Math.ceil(tokens.length / N);
+  const segs = [];
+  for (let i = 0; i < tokens.length; i += size) {
+    segs.push(tokens.slice(i, i + size));
+  }
+
+  // Find top-10 most frequent words (excluding stopwords)
+  const STOP = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','is','was','he','she','it','they','i','you','we','be','with','as','that','this','from','by','not','are','his','her','my','our','your','their','its','had','have','has','will','would','could','should','did','do','been','were','said','all','one','no','so','if','about','which','up','out','into','than','then','when','there','what','who','him','them','me','us','an','any','some','more','also','just','like','over','after','before','very','even','only','now','how','can','may','each','these','those','about','through','upon','down','off','such','own']);
+
+  const freq = {};
+  tokens.forEach(t => { if (!STOP.has(t) && t.length > 2) freq[t] = (freq[t] || 0) + 1; });
+  const topWords = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 8).map(x => x[0]);
+
+  // Build series
+  const series  = {};
+  const patterns = {};
+  topWords.forEach(w => {
+    const s = segs.map(seg => {
+      const c = seg.filter(t => t === w).length;
+      return parseFloat(((c / seg.length) * 10000).toFixed(3));
+    });
+    series[w]  = s;
+    const pk   = detectPeaks(s);
+    const tr   = detectTrend(s);
+    patterns[w]= { peaks: pk, trend: tr, insights: [{ type: tr.label === 'flat' ? 'trend' : 'trend', text: `"${w}" shows a ${tr.label} trend.` }], max: Math.max(...s), mean: s.reduce((a,b)=>a+b,0)/s.length };
+  });
+
+  const correlations = {};
+  for (let i = 0; i < topWords.length; i++)
+    for (let j = i + 1; j < topWords.length; j++) {
+      correlations[`${topWords[i]}_vs_${topWords[j]}`] = pearson(series[topWords[i]], series[topWords[j]]);
+    }
+
+  const id = 'custom_' + Date.now();
+  NOVELS[id] = {
+    meta: { title, total_tokens: tokens.length, num_segments: segs.length, target_words: topWords },
+    words: series,
+    patterns,
+    correlations,
+    segments: segs.map((seg, i) => ({ index: i, snippet: seg.slice(0, 40).join(' ') })),
+  };
+
+  // Add tab
+  const tab = document.createElement('button');
+  tab.className = 'novel-tab';
+  tab.dataset.novel = id;
+  tab.textContent = title.slice(0, 24);
+  dom.novelTabs.appendChild(tab);
+
+  switchNovel(id);
+}
+
+// ── Inject pre-processed JSON ────────────────────────────────────
+function injectNovelData(json, sourceTitle) {
+  Object.entries(json).forEach(([id, data]) => {
+    // Recompute patterns if missing
+    if (!data.patterns) {
+      data.patterns = {};
+      data.meta.target_words.forEach(w => {
+        const s  = data.words[w] || [];
+        const pk = detectPeaks(s);
+        const tr = detectTrend(s);
+        const mn = s.reduce((a, b) => a + b, 0) / s.length;
+        data.patterns[w] = { peaks: pk, trend: tr, insights: [{ type: 'trend', text: `"${w}" — ${tr.label} trend.` }], max: Math.max(...s), mean: mn };
+      });
+    }
+
+    NOVELS[id] = data;
+
+    const tab = document.createElement('button');
+    tab.className = 'novel-tab';
+    tab.dataset.novel = id;
+    tab.textContent = data.meta.title || id;
+    dom.novelTabs.appendChild(tab);
+  });
+
+  const firstId = Object.keys(json)[0];
+  if (firstId) switchNovel(firstId);
+}
+
+// ─── Initialize ───────────────────────────────────────────────────
+switchNovel('moby_dick');
+</script>
+</body>
+</html>
