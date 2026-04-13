@@ -4,7 +4,7 @@ An NLP-powered system that analyzes how word frequencies evolve across novels ov
 
 ## Overview
 
-The **Corpus Rhythm Detector** treats novels as linguistic time series, dividing them into sequential segments and tracking word frequency patterns to extract meaningful insights. Instead of analyzing text as a single block, this system reveals how themes—represented by specific words—rise, fall, and evolve from a book's beginning to its end.
+The **Corpus Rhythm Detector** treats novels as linguistic time series, dividing them into sequential segments and tracking word frequency patterns to extract meaningful insights. Instead of analyzing text as a single block, this system reveals how themes, represented by specific words—rise, fall, and evolve from a book's beginning to its end.
 
 **Supported novels include:**
 - *Moby Dick*
