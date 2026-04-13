@@ -1,6 +1,6 @@
 # Corpus Rhythm Detector
 
-An NLP-powered system that analyzes how word frequencies evolve across novels over time, transforming literary texts into interactive time-series visualizations.
+An NLP-powered system that analyzes how word frequencies evolve across corpora (collections of texts, here novels) over time, transforming literary texts into interactive time-series visualizations.
 
 ## Overview
 
