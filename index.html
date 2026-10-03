@@ -5,16 +5,13 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Corpus Rhythm Detector</title>
 
-<!-- Fonts -->
-<link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
 <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,400;0,700;0,900;1,400;1,700&family=DM+Mono:ital,wght@0,300;0,400;0,500;1,300&family=Crimson+Pro:ital,wght@0,300;0,400;0,600;1,300;1,400&display=swap" rel="stylesheet" />
 
-<!-- Chart.js -->
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
 
 <style>
-  /* ─── CSS Variables ─────────────────────────────────────────── */
   :root {
     --ink:         #0e0d0b;
     --parchment:   #f5f0e8;
@@ -39,7 +36,6 @@
     --font-mono:    'DM Mono', 'Courier New', monospace;
   }
 
-  /* ─── Reset & Base ──────────────────────────────────────────── */
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
   html { font-size: 16px; scroll-behavior: smooth; }
@@ -54,7 +50,6 @@
     overflow-x: hidden;
   }
 
-  /* ─── Texture Overlay ───────────────────────────────────────── */
   body::before {
     content: '';
     position: fixed;
@@ -66,14 +61,12 @@
     opacity: 0.4;
   }
 
-  /* ─── Layout Wrapper ────────────────────────────────────────── */
   .app-wrapper {
     display: grid;
     grid-template-rows: auto 1fr;
     min-height: 100vh;
   }
 
-  /* ─── Header ────────────────────────────────────────────────── */
   .site-header {
     border-bottom: 1px solid var(--border);
     background: var(--ink);
@@ -159,7 +152,6 @@
     letter-spacing: 0.03em;
   }
 
-  /* ─── Novel Selector Tabs ───────────────────────────────────── */
   .novel-tabs-bar {
     background: var(--ink);
     border-bottom: 1px solid rgba(200,132,42,0.2);
@@ -198,7 +190,6 @@
     font-weight: 600;
   }
 
-  /* ─── Main Content Grid ─────────────────────────────────────── */
   .main-content {
     max-width: 1440px;
     margin: 0 auto;
@@ -209,7 +200,6 @@
     align-items: start;
   }
 
-  /* ─── Chart Panel ───────────────────────────────────────────── */
   .chart-panel {
     display: flex;
     flex-direction: column;
@@ -268,7 +258,6 @@
     background: rgba(200,132,42,0.04);
   }
 
-  /* ─── Word Toggle Buttons ───────────────────────────────────── */
   .word-toggles {
     display: flex;
     flex-wrap: wrap;
@@ -317,7 +306,6 @@
     color: var(--ink);
   }
 
-  /* ─── Chart Container ───────────────────────────────────────── */
   .chart-box {
     background: white;
     border: 1px solid var(--border-soft);
@@ -331,7 +319,6 @@
     max-height: 420px;
   }
 
-  /* ─── Segment Explorer ──────────────────────────────────────── */
   .segment-explorer {
     background: var(--ink);
     color: var(--parchment);
@@ -391,14 +378,12 @@
     font-weight: 600;
   }
 
-  /* ─── Sidebar ───────────────────────────────────────────────── */
   .sidebar {
     display: flex;
     flex-direction: column;
     gap: 1.5rem;
   }
 
-  /* ─── Panel Card ────────────────────────────────────────────── */
   .panel-card {
     background: white;
     border: 1px solid var(--border-soft);
@@ -436,7 +421,6 @@
     padding: 1.25rem;
   }
 
-  /* ─── Insights ──────────────────────────────────────────────── */
   .insight-list {
     list-style: none;
     display: flex;
@@ -476,7 +460,6 @@
   .insight-item.dominant strong { color: var(--rust); }
   .insight-item.corr     strong { color: #5a3a7e; }
 
-  /* ─── Correlation Matrix ────────────────────────────────────── */
   .corr-grid {
     display: flex;
     flex-direction: column;
@@ -518,7 +501,6 @@
     min-width: 40px;
   }
 
-  /* ─── Stats Bar ─────────────────────────────────────────────── */
   .stats-grid {
     display: grid;
     grid-template-columns: 1fr 1fr;
@@ -551,7 +533,6 @@
     display: block;
   }
 
-  /* ─── Upload Zone ───────────────────────────────────────────── */
   .upload-zone {
     border: 1.5px dashed var(--border);
     border-radius: 4px;
@@ -593,7 +574,6 @@
 
   #file-input { display: none; }
 
-  /* ─── Loading Spinner ───────────────────────────────────────── */
   .loading-overlay {
     display: none;
     position: fixed;
@@ -627,7 +607,6 @@
     color: var(--muted);
   }
 
-  /* ─── Footer ────────────────────────────────────────────────── */
   .site-footer {
     border-top: 1px solid var(--border-soft);
     padding: 1.25rem 3rem;
@@ -643,7 +622,6 @@
     text-transform: uppercase;
   }
 
-  /* ─── Responsive ────────────────────────────────────────────── */
   @media (max-width: 1100px) {
     .main-content { grid-template-columns: 1fr; padding: 2rem 1.5rem; }
     .sidebar { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; }
@@ -660,7 +638,6 @@
     .novel-tab { padding: 0.65rem 1rem; font-size: 0.82rem; }
   }
 
-  /* ─── Animations ────────────────────────────────────────────── */
   @keyframes fadeUp {
     from { opacity: 0; transform: translateY(12px); }
     to   { opacity: 1; transform: translateY(0); }
@@ -669,7 +646,6 @@
   .chart-panel  { animation: fadeUp 0.5s ease 0.1s both; }
   .sidebar      { animation: fadeUp 0.5s ease 0.2s both; }
 
-  /* ─── Scrollbar ─────────────────────────────────────────────── */
   ::-webkit-scrollbar { width: 6px; height: 6px; }
   ::-webkit-scrollbar-track { background: transparent; }
   ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
@@ -680,7 +656,6 @@
 <body>
 <div class="app-wrapper">
 
-  <!-- ── Header ─────────────────────────────────────────────── -->
   <header class="site-header">
     <div class="header-inner">
       <div>
@@ -695,7 +670,6 @@
       </div>
     </div>
 
-    <!-- Novel Tabs -->
     <div class="novel-tabs-bar">
       <div class="novel-tabs" id="novel-tabs">
         <button class="novel-tab active" data-novel="moby_dick">Moby Dick</button>
@@ -705,11 +679,9 @@
     </div>
   </header>
 
-  <!-- ── Main ────────────────────────────────────────────────── -->
   <main>
     <div class="main-content">
 
-      <!-- ── Left: Chart Panel ─────────────────────────────── -->
       <section class="chart-panel">
 
         <div class="chart-header">
@@ -724,25 +696,20 @@
           </div>
         </div>
 
-        <!-- Word toggles -->
         <div class="word-toggles" id="word-toggles"></div>
 
-        <!-- Chart -->
         <div class="chart-box">
           <canvas id="main-chart"></canvas>
         </div>
 
-        <!-- Segment Explorer -->
         <div class="segment-explorer empty" id="segment-explorer">
           Click any data point to explore that segment
         </div>
 
       </section>
 
-      <!-- ── Right: Sidebar ────────────────────────────────── -->
       <aside class="sidebar">
 
-        <!-- Stats -->
         <div class="panel-card">
           <div class="panel-card-header">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -772,7 +739,6 @@
           </div>
         </div>
 
-        <!-- Insights -->
         <div class="panel-card">
           <div class="panel-card-header">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -786,7 +752,6 @@
           </div>
         </div>
 
-        <!-- Correlations -->
         <div class="panel-card">
           <div class="panel-card-header">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -800,7 +765,6 @@
           </div>
         </div>
 
-        <!-- Upload -->
         <div class="panel-card">
           <div class="panel-card-header">
             <svg class="icon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -836,28 +800,17 @@
   </main>
 </div>
 
-<!-- Loading -->
 <div class="loading-overlay" id="loading-overlay">
   <div class="spinner"></div>
   <div class="loading-text">Processing corpus...</div>
 </div>
 
-<!-- ── JavaScript ──────────────────────────────────────────────── -->
 <script>
-/* ═══════════════════════════════════════════════════════════════
-   CORPUS RHYTHM DETECTOR — Frontend Engine
-   ═══════════════════════════════════════════════════════════════ */
-
-// ── Palette ─────────────────────────────────────────────────────
 const PALETTE = [
   '#c8842a', '#1e6b6e', '#9c3a1e',
   '#4a6e3a', '#5a3a7e', '#2a5e7a',
   '#7a4a2a', '#3a6e5a'
 ];
-
-// ── Simulated Dataset ────────────────────────────────────────────
-// In production, this is loaded from analysis.json produced by preprocess.py.
-// Here we generate realistic-looking synthetic data for demo purposes.
 
 function generateSeries(base, amplitude, freq, noise, n = 90) {
   return Array.from({ length: n }, (_, i) => {
@@ -868,7 +821,6 @@ function generateSeries(base, amplitude, freq, noise, n = 90) {
   });
 }
 
-// ── Pearson correlation (JS) ─────────────────────────────────────
 function pearson(a, b) {
   const n = a.length;
   const ma = a.reduce((s, x) => s + x, 0) / n;
@@ -883,7 +835,6 @@ function pearson(a, b) {
   return parseFloat((num / Math.sqrt(da * db)).toFixed(4));
 }
 
-// ── Peak detection ───────────────────────────────────────────────
 function detectPeaks(series, factor = 1.4) {
   const mean = series.reduce((a, b) => a + b, 0) / series.length;
   const peaks = [];
@@ -895,7 +846,6 @@ function detectPeaks(series, factor = 1.4) {
   return peaks;
 }
 
-// ── Trend detection ──────────────────────────────────────────────
 function detectTrend(series) {
   const n = series.length;
   const xm = (n - 1) / 2;
@@ -909,7 +859,6 @@ function detectTrend(series) {
   return { slope: parseFloat(slope.toFixed(6)), label: slope > 0.003 ? 'increasing' : slope < -0.003 ? 'decreasing' : 'flat' };
 }
 
-// ── Build novel data ─────────────────────────────────────────────
 function buildNovelData(config) {
   const { words, generators, title, tokens, snippets } = config;
   const series = {};
@@ -941,7 +890,6 @@ function buildNovelData(config) {
     patterns[w] = { peaks, trend, insights, max: Math.max(...s), mean };
   });
 
-  // Correlations
   const correlations = {};
   for (let i = 0; i < words.length; i++) {
     for (let j = i + 1; j < words.length; j++) {
@@ -950,7 +898,6 @@ function buildNovelData(config) {
     }
   }
 
-  // Segments
   const N = 90;
   const segments = Array.from({ length: N }, (_, i) => ({
     index: i,
@@ -966,21 +913,20 @@ function buildNovelData(config) {
   };
 }
 
-// ── Novel Definitions ────────────────────────────────────────────
 const NOVELS = {
   moby_dick: buildNovelData({
     title: 'Moby Dick',
     tokens: 218621,
     words: ['whale', 'ahab', 'sea', 'ship', 'white', 'captain', 'water', 'boat'],
     generators: [
-      () => generateSeries(6,  18, 3.2, 4),   // whale
-      () => generateSeries(2,  22, 2.8, 3),   // ahab
-      () => generateSeries(8,  10, 4.0, 5),   // sea
-      () => generateSeries(10, 8,  2.0, 4),   // ship
-      () => generateSeries(3,  14, 1.8, 3),   // white
-      () => generateSeries(12, 7,  1.5, 3),   // captain
-      () => generateSeries(9,  11, 3.5, 4),   // water
-      () => generateSeries(5,  9,  2.2, 3),   // boat
+      () => generateSeries(6,  18, 3.2, 4),   
+      () => generateSeries(2,  22, 2.8, 3),   
+      () => generateSeries(8,  10, 4.0, 5),   
+      () => generateSeries(10, 8,  2.0, 4),  
+      () => generateSeries(3,  14, 1.8, 3),
+      () => generateSeries(12, 7,  1.5, 3), 
+      () => generateSeries(9,  11, 3.5, 4),  
+      () => generateSeries(5,  9,  2.2, 3),   
     ],
     snippets: [
       'call me ishmael some years ago never mind how long precisely having little or no money in my purse and nothing particular to interest me on shore i thought i would sail about a little',
@@ -996,14 +942,14 @@ const NOVELS = {
     tokens: 560045,
     words: ['war', 'peace', 'pierre', 'natasha', 'napoleon', 'prince', 'battle', 'love'],
     generators: [
-      () => generateSeries(5,  20, 2.5, 4),   // war
-      () => generateSeries(12, 8,  1.8, 3),   // peace
-      () => generateSeries(8,  15, 3.0, 4),   // pierre
-      () => generateSeries(7,  14, 2.8, 3),   // natasha
-      () => generateSeries(3,  18, 2.2, 5),   // napoleon
-      () => generateSeries(14, 10, 1.5, 3),   // prince
-      () => generateSeries(4,  22, 2.0, 5),   // battle
-      () => generateSeries(10, 12, 2.5, 3),   // love
+      () => generateSeries(5,  20, 2.5, 4),  
+      () => generateSeries(12, 8,  1.8, 3),   
+      () => generateSeries(8,  15, 3.0, 4),   
+      () => generateSeries(7,  14, 2.8, 3),   
+      () => generateSeries(3,  18, 2.2, 5),   
+      () => generateSeries(14, 10, 1.5, 3),   
+      () => generateSeries(4,  22, 2.0, 5),   
+      () => generateSeries(10, 12, 2.5, 3),   
     ],
     snippets: [
       'well prince so genoa and lucca are now just family estates of the buonapartes anna pavlovna was in a hurry to nip in the bud the idea of any such alliance',
@@ -1019,14 +965,14 @@ const NOVELS = {
     tokens: 211591,
     words: ['guilt', 'raskolnikov', 'crime', 'murder', 'punishment', 'soul', 'money', 'suffer'],
     generators: [
-      () => generateSeries(2,  24, 2.0, 4),   // guilt
-      () => generateSeries(15, 12, 1.5, 3),   // raskolnikov
-      () => generateSeries(4,  20, 2.5, 4),   // crime
-      () => generateSeries(3,  18, 1.8, 4),   // murder
-      () => generateSeries(2,  16, 1.6, 3),   // punishment
-      () => generateSeries(6,  14, 3.0, 4),   // soul
-      () => generateSeries(9,  10, 2.8, 4),   // money
-      () => generateSeries(5,  16, 2.2, 3),   // suffer
+      () => generateSeries(2,  24, 2.0, 4),   
+      () => generateSeries(15, 12, 1.5, 3), 
+      () => generateSeries(4,  20, 2.5, 4),   
+      () => generateSeries(3,  18, 1.8, 4),  
+      () => generateSeries(2,  16, 1.6, 3),   
+      () => generateSeries(6,  14, 3.0, 4),   
+      () => generateSeries(9,  10, 2.8, 4),  
+      () => generateSeries(5,  16, 2.2, 3),   
     ],
     snippets: [
       'on an exceptionally hot evening early in july a young man came out of the garret in which he lodged in s place and walked slowly as though in hesitation towards k bridge',
@@ -1038,12 +984,10 @@ const NOVELS = {
   })
 };
 
-// ─── App State ───────────────────────────────────────────────────
 let currentNovel  = 'moby_dick';
 let activeWords   = new Set();
 let chartInstance = null;
 
-// ─── DOM References ──────────────────────────────────────────────
 const dom = {
   chartCanvas:       document.getElementById('main-chart'),
   wordToggles:       document.getElementById('word-toggles'),
@@ -1064,14 +1008,12 @@ const dom = {
   loadingOverlay:    document.getElementById('loading-overlay'),
 };
 
-// ─── Format numbers ──────────────────────────────────────────────
 function fmtNum(n) {
   if (n >= 1000000) return (n / 1000000).toFixed(1) + 'M';
   if (n >= 1000)    return (n / 1000).toFixed(0) + 'k';
   return String(n);
 }
 
-// ─── Build Word Toggle Buttons ───────────────────────────────────
 function renderToggles(novel) {
   const data = NOVELS[novel];
   dom.wordToggles.innerHTML = '';
@@ -1088,7 +1030,6 @@ function renderToggles(novel) {
   });
 }
 
-// ─── Toggle a word on/off ────────────────────────────────────────
 function toggleWord(word, btn) {
   if (activeWords.has(word)) {
     activeWords.delete(word);
@@ -1100,7 +1041,6 @@ function toggleWord(word, btn) {
   updateChart();
 }
 
-// ─── Build / Update Chart ────────────────────────────────────────
 function updateChart() {
   const data   = NOVELS[currentNovel];
   const words  = [...activeWords];
@@ -1132,7 +1072,6 @@ function updateChart() {
     return;
   }
 
-  // Create new
   chartInstance = new Chart(dom.chartCanvas, {
     type: 'line',
     data: { labels, datasets },
@@ -1197,14 +1136,12 @@ function updateChart() {
   });
 }
 
-// ─── Show Segment Explorer ────────────────────────────────────────
 function showSegment(idx, word) {
   const data    = NOVELS[currentNovel];
   const seg     = data.segments[idx];
   const freq    = word ? data.words[word][idx].toFixed(2) : '—';
   const snippet = seg ? seg.snippet : 'No snippet available.';
 
-  // Highlight the word
   const re = new RegExp(`\\b(${word})\\b`, 'gi');
   const highlighted = snippet.replace(re, '<em>$1</em>');
 
@@ -1218,7 +1155,6 @@ function showSegment(idx, word) {
   `;
 }
 
-// ─── Render Insights ─────────────────────────────────────────────
 function renderInsights(novel) {
   const data = NOVELS[novel];
   dom.insightList.innerHTML = '';
@@ -1230,7 +1166,6 @@ function renderInsights(novel) {
     p.insights.forEach(ins => allInsights.push(ins));
   });
 
-  // Add cross-word correlation insights
   const topCorr = Object.entries(data.correlations)
     .sort((a, b) => Math.abs(b[1]) - Math.abs(a[1]))
     .slice(0, 2);
@@ -1246,7 +1181,6 @@ function renderInsights(novel) {
     }
   });
 
-  // Render top 7
   allInsights.slice(0, 7).forEach(ins => {
     const li = document.createElement('li');
     li.className = `insight-item ${ins.type}`;
@@ -1256,7 +1190,6 @@ function renderInsights(novel) {
   });
 }
 
-// ─── Render Correlations ──────────────────────────────────────────
 function renderCorrelations(novel) {
   const data = NOVELS[novel];
   dom.corrGrid.innerHTML = '';
@@ -1284,7 +1217,6 @@ function renderCorrelations(novel) {
   });
 }
 
-// ─── Render Stats ─────────────────────────────────────────────────
 function renderStats(novel) {
   const data = NOVELS[novel];
   dom.statTokens.textContent   = fmtNum(data.meta.total_tokens);
@@ -1296,25 +1228,21 @@ function renderStats(novel) {
   dom.statPeaks.textContent = totalPeaks;
 }
 
-// ─── Switch Novel ─────────────────────────────────────────────────
 function switchNovel(id) {
   currentNovel = id;
   activeWords  = new Set(NOVELS[id].meta.target_words.slice(0, 3));
 
-  // Update tabs
   document.querySelectorAll('.novel-tab').forEach(t => {
     t.classList.toggle('active', t.dataset.novel === id);
   });
 
   dom.chartTitle.textContent = NOVELS[id].meta.title;
 
-  // Destroy old chart
   if (chartInstance) {
     chartInstance.destroy();
     chartInstance = null;
   }
 
-  // Reset explorer
   dom.segmentExplorer.innerHTML = 'Click any data point to explore that segment';
   dom.segmentExplorer.classList.add('empty');
 
@@ -1325,13 +1253,11 @@ function switchNovel(id) {
   renderStats(id);
 }
 
-// ─── Tab Clicks ───────────────────────────────────────────────────
 dom.novelTabs.addEventListener('click', e => {
   const tab = e.target.closest('.novel-tab');
   if (tab) switchNovel(tab.dataset.novel);
 });
 
-// ─── Select All / None ────────────────────────────────────────────
 dom.btnSelectAll.addEventListener('click', () => {
   const words = NOVELS[currentNovel].meta.target_words;
   activeWords = new Set(words);
@@ -1345,7 +1271,6 @@ dom.btnSelectNone.addEventListener('click', () => {
   updateChart();
 });
 
-// ─── Export PNG ───────────────────────────────────────────────────
 dom.btnExport.addEventListener('click', () => {
   if (!chartInstance) return;
   const link = document.createElement('a');
@@ -1354,7 +1279,6 @@ dom.btnExport.addEventListener('click', () => {
   link.click();
 });
 
-// ─── File Upload ─────────────────────────────────────────────────
 dom.fileInput.addEventListener('change', e => {
   const file = e.target.files[0];
   if (!file) return;
@@ -1385,11 +1309,9 @@ function handleFileUpload(file) {
 
       try {
         if (file.name.endsWith('.json')) {
-          // Load analysis.json directly
           const json = JSON.parse(content);
           injectNovelData(json, file.name.replace('.json', ''));
         } else {
-          // .txt: run in-browser preprocessing
           processTxtInBrowser(content, file.name.replace('.txt', ''));
         }
       } catch (err) {
@@ -1401,9 +1323,7 @@ function handleFileUpload(file) {
   reader.readAsText(file);
 }
 
-// ── In-browser lightweight text processor ─────────────────────────
 function processTxtInBrowser(text, title) {
-  // Remove Gutenberg headers
   const startRx = /\*\*\* ?START OF (THE|THIS) PROJECT GUTENBERG/i;
   const endRx   = /\*\*\* ?END OF (THE|THIS) PROJECT GUTENBERG/i;
   const s = text.search(startRx);
@@ -1411,7 +1331,6 @@ function processTxtInBrowser(text, title) {
   if (s !== -1) text = text.slice(text.indexOf('\n', s) + 1);
   if (e !== -1) text = text.slice(0, e);
 
-  // Tokenize
   const tokens = text.toLowerCase().match(/\b[a-z']+\b/g) || [];
 
   if (tokens.length < 500) {
@@ -1419,7 +1338,6 @@ function processTxtInBrowser(text, title) {
     return;
   }
 
-  // Segment
   const N    = 90;
   const size = Math.ceil(tokens.length / N);
   const segs = [];
@@ -1427,14 +1345,12 @@ function processTxtInBrowser(text, title) {
     segs.push(tokens.slice(i, i + size));
   }
 
-  // Find top-10 most frequent words (excluding stopwords)
   const STOP = new Set(['the','a','an','and','or','but','in','on','at','to','for','of','is','was','he','she','it','they','i','you','we','be','with','as','that','this','from','by','not','are','his','her','my','our','your','their','its','had','have','has','will','would','could','should','did','do','been','were','said','all','one','no','so','if','about','which','up','out','into','than','then','when','there','what','who','him','them','me','us','an','any','some','more','also','just','like','over','after','before','very','even','only','now','how','can','may','each','these','those','about','through','upon','down','off','such','own']);
 
   const freq = {};
   tokens.forEach(t => { if (!STOP.has(t) && t.length > 2) freq[t] = (freq[t] || 0) + 1; });
   const topWords = Object.entries(freq).sort((a, b) => b[1] - a[1]).slice(0, 8).map(x => x[0]);
 
-  // Build series
   const series  = {};
   const patterns = {};
   topWords.forEach(w => {
@@ -1463,7 +1379,6 @@ function processTxtInBrowser(text, title) {
     segments: segs.map((seg, i) => ({ index: i, snippet: seg.slice(0, 40).join(' ') })),
   };
 
-  // Add tab
   const tab = document.createElement('button');
   tab.className = 'novel-tab';
   tab.dataset.novel = id;
@@ -1473,10 +1388,8 @@ function processTxtInBrowser(text, title) {
   switchNovel(id);
 }
 
-// ── Inject pre-processed JSON ────────────────────────────────────
 function injectNovelData(json, sourceTitle) {
   Object.entries(json).forEach(([id, data]) => {
-    // Recompute patterns if missing
     if (!data.patterns) {
       data.patterns = {};
       data.meta.target_words.forEach(w => {
@@ -1501,7 +1414,6 @@ function injectNovelData(json, sourceTitle) {
   if (firstId) switchNovel(firstId);
 }
 
-// ─── Initialize ───────────────────────────────────────────────────
 switchNovel('moby_dick');
 </script>
 </body>
