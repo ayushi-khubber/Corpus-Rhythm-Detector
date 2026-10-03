@@ -1,21 +1,11 @@
-# preprocess.py
-"""
-Corpus Rhythm Detector - NLP Preprocessing Pipeline
-Analyzes temporal word frequency patterns in novels.
-"""
-
 import re
 import json
 import math
 from collections import Counter
 from pathlib import Path
 
+NUM_SEGMENTS = 90  
 
-# ─── Configuration ─────────────────────────────────────────────────────────────
-
-NUM_SEGMENTS = 90  # Target number of equal text segments
-
-# Predefined word sets for each novel
 WORD_SETS = {
     "moby_dick": ["whale", "ahab", "sea", "ship", "white", "captain", "water", "boat"],
     "war_and_peace": ["war", "peace", "pierre", "natasha", "napoleon", "prince", "battle", "love"],
@@ -24,7 +14,6 @@ WORD_SETS = {
     ],
 }
 
-# Project Gutenberg boundary markers
 GUTENBERG_START_MARKERS = [
     "*** START OF THE PROJECT GUTENBERG",
     "*** START OF THIS PROJECT GUTENBERG",
@@ -36,9 +25,6 @@ GUTENBERG_END_MARKERS = [
     "**END OF THE PROJECT GUTENBERG",
 ]
 
-
-# ─── Text Cleaning ──────────────────────────────────────────────────────────────
-
 def remove_gutenberg_boilerplate(text: str) -> str:
     """Strip Project Gutenberg header and footer from raw text."""
     start_idx = 0
@@ -47,7 +33,6 @@ def remove_gutenberg_boilerplate(text: str) -> str:
     for marker in GUTENBERG_START_MARKERS:
         idx = text.upper().find(marker.upper())
         if idx != -1:
-            # Skip to end of that line
             start_idx = text.find("\n", idx) + 1
             break
 
@@ -63,19 +48,13 @@ def remove_gutenberg_boilerplate(text: str) -> str:
 def clean_text(text: str) -> str:
     """Lowercase and normalize whitespace."""
     text = text.lower()
-    text = re.sub(r"\r\n|\r", "\n", text)          # Normalize line endings
-    text = re.sub(r"[ \t]+", " ", text)             # Collapse spaces/tabs
+    text = re.sub(r"\r\n|\r", "\n", text)          
+    text = re.sub(r"[ \t]+", " ", text)             
     return text.strip()
-
-
-# ─── Tokenization ───────────────────────────────────────────────────────────────
 
 def tokenize(text: str) -> list[str]:
     """Extract word tokens using the project regex pattern."""
     return re.findall(r"\b[a-z']+\b", text)
-
-
-# ─── Segmentation ───────────────────────────────────────────────────────────────
 
 def split_into_segments(tokens: list[str], num_segments: int = NUM_SEGMENTS):
     """
@@ -93,9 +72,6 @@ def split_into_segments(tokens: list[str], num_segments: int = NUM_SEGMENTS):
 
     return segments
 
-
-# ─── Frequency Calculation ───────────────────────────────────────────────────────
-
 def compute_normalized_frequency(tokens: list[str], word: str) -> float:
     """
     Normalized frequency = (count / total_words) * 10,000
@@ -105,9 +81,6 @@ def compute_normalized_frequency(tokens: list[str], word: str) -> float:
     if total == 0:
         return 0.0
     return round((count / total) * 10000, 4)
-
-
-# ─── Pattern Detection ───────────────────────────────────────────────────────────
 
 def detect_peaks(series: list[float], threshold_factor: float = 1.5) -> list[int]:
     """
@@ -155,9 +128,6 @@ def detect_trend(series: list[float]) -> dict:
 
     return {"slope": round(slope, 6), "label": label}
 
-
-# ─── Pearson Correlation ─────────────────────────────────────────────────────────
-
 def pearson_correlation(series_a: list[float], series_b: list[float]) -> float:
     """Compute Pearson correlation coefficient between two frequency series."""
     n = len(series_a)
@@ -176,15 +146,11 @@ def pearson_correlation(series_a: list[float], series_b: list[float]) -> float:
 
     return round(numerator / (denom_a * denom_b), 4)
 
-
-# ─── Insight Generation ──────────────────────────────────────────────────────────
-
 def generate_insights(word: str, series: list[float], peaks: list[int], trend: dict) -> list[str]:
     """Generate human-readable literary insights from detected patterns."""
     insights = []
     mean_freq = sum(series) / len(series) if series else 0
 
-    # Trend insight
     if trend["label"] == "increasing":
         insights.append(
             f'"{word}" shows a strong increasing trend — '
@@ -200,7 +166,6 @@ def generate_insights(word: str, series: list[float], peaks: list[int], trend: d
             f'"{word}" maintains a relatively stable presence throughout the novel.'
         )
 
-    # Peak insight
     if len(peaks) > 5:
         insights.append(
             f'"{word}" shows {len(peaks)} periodic spikes — '
@@ -213,7 +178,6 @@ def generate_insights(word: str, series: list[float], peaks: list[int], trend: d
             f"likely corresponding to key narrative moments."
         )
 
-    # Frequency insight
     if mean_freq > 20:
         insights.append(
             f'"{word}" is a dominant lexical presence '
@@ -227,9 +191,6 @@ def generate_insights(word: str, series: list[float], peaks: list[int], trend: d
 
     return insights
 
-
-# ─── Main Pipeline ───────────────────────────────────────────────────────────────
-
 def process_novel(
     txt_path: str,
     target_words: list[str],
@@ -237,48 +198,29 @@ def process_novel(
     novel_title: str,
     num_segments: int = NUM_SEGMENTS,
 ) -> dict:
-    """
-    Full preprocessing pipeline for a single novel.
 
-    Args:
-        txt_path:     Path to the .txt file
-        target_words: List of words to track
-        novel_id:     Short identifier (e.g., 'moby_dick')
-        novel_title:  Display title
-        num_segments: How many segments to divide the novel into
-
-    Returns:
-        Structured analysis dict ready for JSON serialization
-    """
     print(f"\nProcessing: {novel_title}")
     print(f"  File: {txt_path}")
 
-    # ── Load raw text ────────────────────────────────
     raw = Path(txt_path).read_text(encoding="utf-8", errors="replace")
     print(f"  Raw characters: {len(raw):,}")
 
-    # ── Clean ────────────────────────────────────────
     cleaned = remove_gutenberg_boilerplate(raw)
     cleaned = clean_text(cleaned)
     print(f"  Cleaned characters: {len(cleaned):,}")
 
-    # ── Tokenize ─────────────────────────────────────
     tokens = tokenize(cleaned)
     print(f"  Total tokens: {len(tokens):,}")
 
-    # ── Segment ──────────────────────────────────────
     segments_data = split_into_segments(tokens, num_segments)
     actual_segments = len(segments_data)
     print(f"  Segments: {actual_segments}")
 
-    # Reconstruct original char positions for snippet extraction
-    # (approximate — join tokens back per segment)
     segment_snippets = []
     for seg_tokens, _, _ in segments_data:
         snippet = " ".join(seg_tokens[:40])  # ~200 chars approx
         segment_snippets.append(snippet[:200])
 
-    # ── Compute word frequency series ────────────────
     word_series = {}
     word_patterns = {}
 
@@ -301,7 +243,6 @@ def process_novel(
             "mean_frequency": round(sum(series) / len(series), 4),
         }
 
-    # ── Compute pairwise correlations ────────────────
     correlations = {}
     for i, w1 in enumerate(target_words):
         for w2 in target_words[i + 1 :]:
@@ -309,7 +250,6 @@ def process_novel(
             r = pearson_correlation(word_series[w1], word_series[w2])
             correlations[key] = r
 
-    # ── Build output structure ────────────────────────
     output = {
         "meta": {
             "novel_id": novel_id,
@@ -333,13 +273,9 @@ def process_novel(
 
     return output
 
-
-# ─── Entry Point ────────────────────────────────────────────────────────────────
-
 if __name__ == "__main__":
     import sys
 
-    # ── Demo mode: process all three novels if files exist ──
     novels = [
         {
             "path": "moby_dick.txt",
@@ -384,7 +320,6 @@ if __name__ == "__main__":
         print("  Crime and Punishment:  https://www.gutenberg.org/ebooks/2554")
         sys.exit(1)
 
-    # Write combined JSON output
     out_path = Path("analysis.json")
     out_path.write_text(json.dumps(results, indent=2), encoding="utf-8")
     print(f"\nOutput written to: {out_path}")
